@@ -7,6 +7,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import torch.nn as nn
 from matplotlib.patches import Rectangle
 
 from backbone_v2 import VGG, build_vgg16
@@ -91,11 +92,15 @@ class Tadt_Tracker(object):
         self.filter_sizes = [torch.tensor(feature.shape).numpy() for feature in patch_features]
 
 
-        #-------------compute the indecis of target-aware features----------------
+        #-------------compute the indices of target-aware features----------------
         self.feature_weights, self.balance_weights = taf_model(features, self.filter_sizes, self.device)
         #-------------select the target-awares features---------------------------
         self.exemplar_features = features_selection(patch_features, self.feature_weights, self.balance_weights, mode = 'reduction')
         #self.exemplar_features = fuse_feature(patch_features)
+        
+        #-------------calculate global average pooling of exemplar features-------------------
+        kernel_size = self.exemplar_features[0].shape[1:2]
+        self.exemplar_features_gap = nn.AvgPool2d(kernel_size)(self.exemplar_features[0])
 
         #------------visualization------------------------------------------------
         if self.display:
