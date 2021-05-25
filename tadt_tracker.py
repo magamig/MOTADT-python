@@ -121,6 +121,8 @@ class Tadt_Tracker(object):
         features = get_subwindow_feature(self.model, image, self.srch_window_location, self.input_size, visualize = visualize)
         feature_size = (torch.tensor(features[0].shape)).numpy().astype(int)[-2:]
         #selected_features = fuse_feature(features)
+
+        #-------------select the target-aware features new frame (not exemplar)---------------------------
         selected_features = features_selection(features, self.feature_weights, self.balance_weights, mode = 'reduction')
         selected_features_1 = resize_tensor(selected_features, tuple(feature_size + self.feature_pad))
         selected_features_3 = resize_tensor(selected_features, tuple(feature_size - self.feature_pad))
@@ -129,7 +131,8 @@ class Tadt_Tracker(object):
         selected_features_3 = torch.nn.functional.pad(selected_features_3, (self.b_feature_pad, self.b_feature_pad, self.b_feature_pad, self.b_feature_pad))
         scaled_features = torch.cat((selected_features_1,selected_features,selected_features_3), dim = 0)
 
-        #-------------get response map-----------------------------------------------
+
+        #-------------get response map (final target aware bluish feature map result of correlation)-------------------------
         response_map = self.siamese_model(scaled_features, self.exemplar_features).to('cpu')
         scaled_response_map = torch.squeeze(resize_tensor(
                                                 response_map,
@@ -147,6 +150,13 @@ class Tadt_Tracker(object):
             max_h = np.array([max_h[0],])
         if len(max_w)>1:
             max_w = np.array([max_w[0],])
+        
+        #plt.imshow(response_map)
+        #plt.show()
+
+        #-------------calculate global average pooling of new frame features-------------------
+        kernel_size = selected_features[0].shape[1:2]
+        self.selected_features_gap = nn.AvgPool2d(kernel_size)(selected_features[0])
 
         #-------------update tracking state and save tracking result----------------------------------------
         target_loc_center = np.append(self.target_location[0:2]+(self.target_location[2:4])/2, self.target_location[2:4])
