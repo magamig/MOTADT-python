@@ -3,6 +3,6 @@ opencv-python
 matplotlib
 scipy
 yacs
-torch
+torch # https://github.com/pytorch/pytorch/issues/30664#issuecomment-757431613
 torchvision
 # PyQt5 # fix for AttributeError in MacOS
