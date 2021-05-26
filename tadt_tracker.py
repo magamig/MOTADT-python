@@ -99,7 +99,7 @@ class Tadt_Tracker(object):
         #self.exemplar_features = fuse_feature(patch_features)
         
         #-------------calculate global average pooling of exemplar features-------------------
-        kernel_size = self.exemplar_features[0].shape[1:2]
+        kernel_size = self.exemplar_features[0].shape[1:3]
         self.exemplar_features_gap = nn.AvgPool2d(kernel_size)(self.exemplar_features[0])
 
         #------------visualization------------------------------------------------
@@ -139,24 +139,42 @@ class Tadt_Tracker(object):
                                                 tuple(self.srch_window_location[-2:].astype(int)),
                                                 mode = 'bicubic',
                                                 align_corners = True))
+
         hann_window = generate_2d_window('hann', tuple(self.srch_window_location[-2:].astype(int)), scaled_response_map.shape[0])
         scaled_response_maps = scaled_response_map + hann_window
 
-        #-------------find max-response----------------------------------------------
+        #-------------calculate ROI----------------------------------------------
         scale_ind = calculate_scale(scaled_response_maps, self.config.MODEL.SCALE_WEIGHTS)
+
+        response_map_reshaped = response_map[scale_ind,0,:,:].numpy()
+        center_h, center_w = np.where(response_map_reshaped == np.max(response_map_reshaped)) #find center ROI
+        center_h, center_w = center_h[0], center_w[0]
+
+        region_size = self.exemplar_features[0].shape[1:3]
+        width_size = int(region_size[0]/2)
+        width_remainder = region_size[0] % 2
+        height_size = int(region_size[1]/2)
+        height_remainder = region_size[1] % 2
+
+        #plt.imshow(response_map_reshaped)
+        #plt.plot(center_w, center_h, "xr", markersize=5)
+        #plt.plot(center_w - width_size, center_h - height_size, "or", markersize=5)
+        #plt.plot(center_w + width_size + width_remainder, center_h + height_size + height_remainder, "or", markersize=5)
+        #plt.show()
+
+        roi = scaled_features[scale_ind, : , center_w - width_size : center_w + width_size + width_remainder, center_h - height_size : center_h + height_size + height_remainder]
+
+
+        #-------------calculate Global Average Pooling current frame features--------------------
+        self.roi_gap = nn.AvgPool2d(region_size)(roi)
+
+        #-------------find max-response----------------------------------------------
         response_map = scaled_response_maps[scale_ind,:,:].numpy()
         max_h, max_w = np.where(response_map == np.max(response_map))
         if len(max_h)>1:
             max_h = np.array([max_h[0],])
         if len(max_w)>1:
             max_w = np.array([max_w[0],])
-        
-        #plt.imshow(response_map)
-        #plt.show()
-
-        #-------------calculate global average pooling of new frame features-------------------
-        kernel_size = selected_features[0].shape[1:2]
-        self.selected_features_gap = nn.AvgPool2d(kernel_size)(selected_features[0])
 
         #-------------update tracking state and save tracking result----------------------------------------
         target_loc_center = np.append(self.target_location[0:2]+(self.target_location[2:4])/2, self.target_location[2:4])
@@ -164,13 +182,20 @@ class Tadt_Tracker(object):
         target_loc_center[2:4] = target_loc_center[2:4] * self.config.MODEL.SCALES[scale_ind]
         #print('target_loc_center in current frame:',target_loc_center)
         self.target_location = np.append(target_loc_center[0:2]-(target_loc_center[2:4])/2, target_loc_center[2:4])
-        #print('target_location in current frame:', target_location)
+        #print('target_location in current frame:', self.target_location)
 
         self.srch_window_location[2:4] = (round_python2(self.srch_window_location[2:4] * self.config.MODEL.SCALES[scale_ind]))
         self.srch_window_location[0:2] = target_loc_center[0:2]-(self.srch_window_location[2:4])/2
 
+        #print('srch_window_location: ', self.srch_window_location)
+
         tracking_bbox = (self.target_location + np.array([1,1,0,0]))/self.rescale - np.array([1,1,0,0])#tracking_bbox: 0-index
         self.results.append(tracking_bbox)
+
+        #-------------calculate global average pooling of new frame features-------------------
+        kernel_size = selected_features[0].shape[1:2]
+        self.selected_features_gap = nn.AvgPool2d(kernel_size)(selected_features[0])
+
         self.toc += cv2.getTickCount() - tic
         if self.display:
             self.visualization(img,tracking_bbox.astype(int),frame)
