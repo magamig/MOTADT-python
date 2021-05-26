@@ -163,9 +163,10 @@ class Tadt_Tracker(object):
         #plt.show()
 
         roi_features = scaled_features[scale_ind, : , center_w - width_size : center_w + width_size + width_remainder, center_h - height_size : center_h + height_size + height_remainder]
+        roi_size = roi_features.shape[1:3]
 
         #-------------calculate Global Average Pooling current frame features--------------------
-        roi_features_gap = nn.AvgPool2d(region_size)(roi_features)
+        roi_features_gap = nn.AvgPool2d(roi_size)(roi_features)
 
         #-------------calculate Affinity Matrix--------------------
         self.affinity_matrix = torch.sum(self.exemplar_features_gap * roi_features_gap) / len(roi_features_gap)
