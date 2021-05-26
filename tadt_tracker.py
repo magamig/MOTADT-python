@@ -162,11 +162,13 @@ class Tadt_Tracker(object):
         #plt.plot(center_w + width_size + width_remainder, center_h + height_size + height_remainder, "or", markersize=5)
         #plt.show()
 
-        roi = scaled_features[scale_ind, : , center_w - width_size : center_w + width_size + width_remainder, center_h - height_size : center_h + height_size + height_remainder]
-
+        roi_features = scaled_features[scale_ind, : , center_w - width_size : center_w + width_size + width_remainder, center_h - height_size : center_h + height_size + height_remainder]
 
         #-------------calculate Global Average Pooling current frame features--------------------
-        self.roi_gap = nn.AvgPool2d(region_size)(roi)
+        roi_features_gap = nn.AvgPool2d(region_size)(roi_features)
+
+        #-------------calculate Affinity Matrix--------------------
+        self.affinity_matrix = torch.sum(self.exemplar_features_gap * roi_features_gap) / len(roi_features_gap)
 
         #-------------find max-response----------------------------------------------
         response_map = scaled_response_maps[scale_ind,:,:].numpy()
