@@ -26,7 +26,8 @@ def get_subwindow_feature(model, image, location, input_sz, layer_name = None, v
     """
 
     subwindow = get_subwindow(location, image, input_sz, visualize)
-    visualize = False
+    visualize = True
+    
     #if visualize:
     #    tensor_show(subwindow, 10, normalize = False)
     subwindow = (torch.unsqueeze(subwindow, 0)).to(device)
@@ -36,8 +37,16 @@ def get_subwindow_feature(model, image, location, input_sz, layer_name = None, v
         print('feature.shape:',feature.shape)
         heatmap = torch.sum(torch.squeeze(feature),dim = 0)
         heatmap = heatmap/torch.max(heatmap)
-        print('heatmap:\n',heatmap.shape)
-        tensor_show(heatmap, 50, normalize = False, feature = True)
+        heatmap = cv2.resize(heatmap.cpu().numpy(), (subwindow.shape[3], subwindow.shape[2]))
+        heatmap = np.uint8(255 * heatmap)
+        heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+
+        image2 = cv2.cvtColor(get_cv2_subwindow(location, image, input_sz),cv2.COLOR_BGR2RGB)
+        #image2 = np.uint8(255 * image2 + 128)
+
+        cv2.imshow("Heatmap",image2)
+        cv2.waitKey(0)
+
     return features
 
 def get_subwindow(location, image, input_sz, visualize = True):
@@ -82,6 +91,37 @@ def get_subwindow(location, image, input_sz, visualize = True):
     image = torch.tensor(image.transpose(2,0,1), dtype=torch.float)- 128
 
     return image
+
+
+def get_cv2_subwindow(location, image, input_sz):
+    """
+    args:
+        location - subwindow location [x1, y1, w, h]
+        image - <class 'numpy.ndarray'>
+        input_sz - the size of the input of vgg model, [width,height]
+        visualize - whether to visualize the subwindow
+    """
+    size = np.array(location[2:4])
+    position = np.array(location[0:2]) + size/2
+    height, width = image.shape[0:2]
+
+
+    x_index = (np.floor(position[0] + np.arange(1, size[0]+1) - np.ceil(size[0]/2))).astype(int)
+    y_index = (np.floor(position[1] + np.arange(1, size[1]+1) - np.ceil(size[1]/2))).astype(int)
+
+    #crop
+    y_index = clamp(y_index, 0, height - 1)
+
+    x_index = clamp(x_index, 0, width - 1)
+
+    x_index, y_index = np.meshgrid(x_index, y_index)
+
+    image = image[y_index, x_index, :]
+
+    image = cv2.resize(image, tuple(input_sz), interpolation=cv2.INTER_LINEAR)
+
+    return image
+
 
 def clamp(index, lower, upper):
 
@@ -175,7 +215,7 @@ def tensor_show(tensor, time = 20,bbox = None, normalize = True, feature = False
         ax.add_patch(Rectangle((bbox[0],bbox[1]),bbox[2],bbox[3],fill=False,color='g'))
     plt.ion()
     mngr = plt.get_current_fig_manager()
-    mngr.window.setGeometry(100,100,800,500)
+    mngr.window.setGeometry = (100,100,800,500)
     plt.pause(time)
     plt.clf()
     plt.close()
