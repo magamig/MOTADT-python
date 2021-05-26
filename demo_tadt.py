@@ -13,9 +13,9 @@ from tadt_tracker import Tadt_Tracker
 
 
 def load_sequece(root_path):
-    img_list = (glob.glob(join(root_path, '*/img/*.jpg')))
+    img_list = (glob.glob(join(root_path, 'img/*.jpg')))
     img_list.sort()
-    gt_path = glob.glob(join(root_path, '*/*.txt'))
+    gt_path = glob.glob(join(root_path, '*.txt'))
 
     with open(gt_path[0], 'r') as f:
         gt_bboxes = f.readlines()
@@ -29,7 +29,7 @@ def load_sequece(root_path):
 if __name__ == "__main__":
     #assert(False), 'please download "imagenet-vgg-verydeep-16.mat" from "http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-16.mat" and set its path in defaults.py'
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    root_path = join(realpath(dirname(__file__)),'sequences/')
+    root_path = join(realpath(dirname(__file__)),'sequences/Test/')
     img_list, gt_bboxes = load_sequece(root_path)
 
     #------------------demo------------------------------------------------------------------
