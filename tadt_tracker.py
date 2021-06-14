@@ -14,7 +14,8 @@ from backbone_v2 import VGG, build_vgg16
 from feature_utils_v2 import feature_selection  # for visualization
 from feature_utils_v2 import (features_selection, generate_patch_feature,
                               get_subwindow, get_subwindow_feature,
-                              resize_tensor, round_python2)
+                              resize_tensor, round_python2,
+                              get_frame_feature)
 from image_loader import default_image_loader
 from siamese import SiameseNet
 from taf import taf_model
@@ -120,7 +121,9 @@ class Tadt_Tracker(object):
         #-------------get multi-scale feature--------------------------------------
         features = get_subwindow_feature(self.model, image, self.srch_window_location, self.input_size, visualize = visualize)
         feature_size = (torch.tensor(features[0].shape)).numpy().astype(int)[-2:]
+        
         #selected_features = fuse_feature(features)
+        #get_frame_feature(self.model, image) #heatmap over entire frame
 
         #-------------select the target-aware features new frame (not exemplar)---------------------------
         selected_features = features_selection(features, self.feature_weights, self.balance_weights, mode = 'reduction')
@@ -166,10 +169,10 @@ class Tadt_Tracker(object):
         roi_size = roi_features.shape[1:3]
 
         #-------------calculate Global Average Pooling current frame features--------------------
-        roi_features_gap = nn.AvgPool2d(roi_size)(roi_features)
+        #roi_features_gap = nn.AvgPool2d(roi_size)(roi_features)
 
         #-------------calculate Affinity Matrix--------------------
-        self.affinity_matrix = torch.sum(self.exemplar_features_gap * roi_features_gap) / len(roi_features_gap)
+        #self.affinity_matrix = torch.sum(self.exemplar_features_gap * roi_features_gap) / len(roi_features_gap)
 
         #-------------find max-response----------------------------------------------
         response_map = scaled_response_maps[scale_ind,:,:].numpy()

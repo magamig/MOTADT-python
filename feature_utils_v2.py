@@ -7,6 +7,10 @@ import torch.nn as nn
 from matplotlib.patches import Rectangle
 from torchvision import transforms
 
+import time
+import os
+from PIL import Image
+
 from image_loader import default_image_loader
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -26,28 +30,46 @@ def get_subwindow_feature(model, image, location, input_sz, layer_name = None, v
     """
 
     subwindow = get_subwindow(location, image, input_sz, visualize)
-    visualize = True
+    visualize = False
     
-    #if visualize:
-    #    tensor_show(subwindow, 10, normalize = False)
     subwindow = (torch.unsqueeze(subwindow, 0)).to(device)
     features = model(subwindow, layer_name)
     if visualize:
-        feature = torch.cat(features, dim = 1)
-        print('feature.shape:',feature.shape)
-        heatmap = torch.sum(torch.squeeze(feature),dim = 0)
-        heatmap = heatmap/torch.max(heatmap)
-        heatmap = cv2.resize(heatmap.cpu().numpy(), (subwindow.shape[3], subwindow.shape[2]))
-        heatmap = np.uint8(255 * heatmap)
-        heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
-
-        image2 = cv2.cvtColor(get_cv2_subwindow(location, image, input_sz),cv2.COLOR_BGR2RGB)
-        #image2 = np.uint8(255 * image2 + 128)
-
-        cv2.imshow("Heatmap",image2)
-        cv2.waitKey(0)
+        show_heatmap_over_image(location, image, input_sz, features, subwindow)
 
     return features
+
+def get_frame_feature(model, image, layer_name = None):
+    """
+    function: extracts the deep features of the input images with the given model
+    args:
+        model - deep network to extract features
+        img - image to be processed
+        layer_name -
+    """
+
+    #image transforms for matconvnet vgg model
+    frame = torch.tensor(image.transpose(2,0,1), dtype=torch.float)- 128
+    
+    frame = (torch.unsqueeze(frame, 0)).to(device)
+    features = model(frame, layer_name)
+    show_heatmap_over_image(None, image, None, features, frame)
+
+def show_heatmap_over_image(location, image, input_sz, features, window):
+    feature = torch.cat(features, dim = 1)
+    heatmap = torch.sum(torch.squeeze(feature),dim = 0)
+    heatmap = heatmap/torch.max(heatmap)
+    heatmap = cv2.resize(heatmap.cpu().numpy(), (window.shape[3], window.shape[2]))
+    heatmap = np.uint8(255 * heatmap)
+    heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+
+    if (location):
+        subwindow_image = cv2.cvtColor(get_cv2_subwindow(location, image, input_sz),cv2.COLOR_BGR2RGB)
+    else:
+        subwindow_image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+        cv2.imshow("Combination", cv2.addWeighted(subwindow_image, 0.6, heatmap, 0.4, 0.0))
+        cv2.waitKey(0)
+
 
 def get_subwindow(location, image, input_sz, visualize = True):
     """

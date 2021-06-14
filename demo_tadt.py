@@ -12,7 +12,7 @@ from defaults import _C as cfg
 from tadt_tracker import Tadt_Tracker
 
 
-def load_sequece(root_path):
+def load_sequence(root_path):
     img_list = (glob.glob(join(root_path, 'img/*.jpg')))
     img_list.sort()
     gt_path = glob.glob(join(root_path, '*.txt'))
@@ -30,11 +30,11 @@ if __name__ == "__main__":
     #assert(False), 'please download "imagenet-vgg-verydeep-16.mat" from "http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-16.mat" and set its path in defaults.py'
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     root_path = join(realpath(dirname(__file__)),'sequences/Test/')
-    img_list, gt_bboxes = load_sequece(root_path)
+    img_list, gt_bboxes = load_sequence(root_path)
 
     #------------------demo------------------------------------------------------------------
     model = build_vgg16(cfg)
-    tracker = Tadt_Tracker(cfg, model = model, device = device, display = True)
+    tracker = Tadt_Tracker(cfg, model = model, device = device, display = False)
     tracker.initialize_tadt(img_list[0], gt_bboxes[0])
     #if want to visualize the selected feature, uncomment these lines
     #tracker.visualize_feature(
