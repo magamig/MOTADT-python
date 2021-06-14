@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     #------------------demo------------------------------------------------------------------
     model = build_vgg16(cfg)
-    tracker = Tadt_Tracker(cfg, model = model, device = device, display = False)
+    tracker = Tadt_Tracker(cfg, model = model, device = device, display = True)
     tracker.initialize_tadt(img_list[0], gt_bboxes[0])
     #if want to visualize the selected feature, uncomment these lines
     #tracker.visualize_feature(

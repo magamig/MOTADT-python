@@ -149,15 +149,15 @@ class Tadt_Tracker(object):
         #-------------calculate ROI----------------------------------------------
         scale_ind = calculate_scale(scaled_response_maps, self.config.MODEL.SCALE_WEIGHTS)
 
-        response_map_reshaped = response_map[scale_ind,0,:,:].numpy()
-        center_h, center_w = np.where(response_map_reshaped == np.max(response_map_reshaped)) #find center ROI
-        center_h, center_w = center_h[0], center_w[0]
+        #response_map_reshaped = response_map[scale_ind,0,:,:].numpy()
+        #center_h, center_w = np.where(response_map_reshaped == np.max(response_map_reshaped)) #find center ROI
+        #center_h, center_w = center_h[0], center_w[0]
 
-        region_size = self.exemplar_features[0].shape[1:3]
-        width_size = int(region_size[0]/2)
-        width_remainder = region_size[0] % 2
-        height_size = int(region_size[1]/2)
-        height_remainder = region_size[1] % 2
+        #region_size = self.exemplar_features[0].shape[1:3]
+        #width_size = int(region_size[0]/2)
+        #width_remainder = region_size[0] % 2
+        #height_size = int(region_size[1]/2)
+        #height_remainder = region_size[1] % 2
 
         #plt.imshow(response_map_reshaped)
         #plt.plot(center_w, center_h, "xr", markersize=5)
@@ -165,8 +165,8 @@ class Tadt_Tracker(object):
         #plt.plot(center_w + width_size + width_remainder, center_h + height_size + height_remainder, "or", markersize=5)
         #plt.show()
 
-        roi_features = scaled_features[scale_ind, : , center_w - width_size : center_w + width_size + width_remainder, center_h - height_size : center_h + height_size + height_remainder]
-        roi_size = roi_features.shape[1:3]
+        #roi_features = scaled_features[scale_ind, : , center_w - width_size : center_w + width_size + width_remainder, center_h - height_size : center_h + height_size + height_remainder]
+        #roi_size = roi_features.shape[1:3]
 
         #-------------calculate Global Average Pooling current frame features--------------------
         #roi_features_gap = nn.AvgPool2d(roi_size)(roi_features)
