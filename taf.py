@@ -16,13 +16,13 @@ torch.cuda.manual_seed_all(1234)
 
 def taf_model(features, filter_sizes, device):
     '''
+    args:
+        filter_sizes - size of exemplar feature maps [batch, channel, height, width]
+        features - features of the Conv4-3 and Conv4-1 layers of VGG16 that
+                   will be used to calculate target and scale sensitive features
     return: target aware features
             feature weights - the position of the weights that we select as target aware features
             balance weights - two values used to rescale the features due to scalar difference between conv4-1 and conv4-3
-    args:
-        filter_sizes - size of exemplare feature maps [batch, channel, height, width]
-        features - features of the Conv4-3 and Conv4-1 layers of VGG16 that
-                   will be used to calculate target and scale sensitive features
     '''
     feature_weights = []
     channel_num = [80,300]

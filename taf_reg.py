@@ -5,6 +5,14 @@ from torch.optim import SGD
 from taf_net import Regress_Net
 
 def taf_reg_model(feature, filter_size, device):
+    '''
+    args:
+        filter_size - size of exemplar feature maps [batch, channel, height, width]
+        feature - either the features of the Conv4-3 or Conv4-1 layers of VGG16 that
+                  will be used to calculate target or scale sensitive features
+    return: indices - list of indices of the weights selected during regression
+            reg_feature_weights - tensor containing 0's and 1's at the positions determined by indices
+    '''
     reg = Regress_Net(filter_size).to(device) #used for target active features
     feature_size = torch.tensor(feature.shape).numpy()
 
