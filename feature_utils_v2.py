@@ -20,7 +20,8 @@ def unnormalize(tensor):
 
 def get_subwindow_feature(model, image, location, input_sz, layer_name = None, visualize = True):
     """
-    function: extracts the spetialed deep features of the input images with the given model
+    function: extracts the features of the Conv4-3 and Conv4-1 layers of VGG16 that
+              will be used to calculate target and scale sensitive features
     args:
         model - deep network to extract features
         img - image to be processed

@@ -79,7 +79,8 @@ class Tadt_Tracker(object):
 
         #------------First frame processing--------------------
         self.srch_window_location = cal_srch_window_location(self.target_location, search_size)
-        features = get_subwindow_feature(self.model, image, self.srch_window_location, self.input_size, visualize = visualize)
+        features = get_subwindow_feature(self.model, image, self.srch_window_location, self.input_size, visualize = visualize) #two tensors, one from each Conv layer
+        
         #------------------------for visualize feature-----------
         #if do not want to visualize, comment these lines
         visualize_feature = True

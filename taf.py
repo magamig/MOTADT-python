@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim import SGD
+import cv2
 
 from taf_net import Regress_Net
 from taf_rank import taf_rank_model
@@ -17,21 +18,27 @@ torch.cuda.manual_seed_all(1234)
 
 def taf_model(features, filter_sizes, device):
     '''
-    function: select target aware feature
+    return: target aware features
+            feature weights - the position of the weights that we select as target aware features
+            balance weights - two values used to rescale the features due to scalar difference between conv4-1 and conv4-3
     args:
-        filter_sizes - [batch, channel, height, width]
+        filter_sizes - size of exemplare feature maps [batch, channel, height, width]
+        features - features of the Conv4-3 and Conv4-1 layers of VGG16 that
+                   will be used to calculate target and scale sensitive features
     '''
-    num_feaure_groups = len(features)
     feature_weights = []
     channel_num = [80,300]
     nz_num = 0
     nz_num_min = 250
     balance_weights = []
 
-    for i in range(num_feaure_groups):
-        feature, filter_size = features[i], filter_sizes[i]
-        reg = Regress_Net(filter_size).to(device)
+    for i in range(len(features)):
+        feature, filter_size = features[i], filter_sizes[i] #[1, 512, 45, 45], [  1 512  17  13]
+        reg = Regress_Net(filter_size).to(device) #used for target active features
         feature_size = torch.tensor(feature.shape).numpy()
+
+        #cv2.imshow("Feature Map", cv2.resize(np.uint8(feature[0, 0, :, :].cpu()), (400, 400)))
+        #cv2.waitKey(0)
 
         output_sigma = filter_size[-2:]* 0.1
         gauss_label = generate_gauss_label(feature_size[-2:], output_sigma).to(device)
@@ -47,16 +54,14 @@ def taf_model(features, filter_sizes, device):
         train_reg(reg, optim, feature, objective, gauss_label, device, max_epochs)
         reg_weights = reg.conv.weight.data
 
-        weight = torch.sum(reg_weights, dim = (0,2,3))
-
-        # The value ot the parameters equals to the sum of the gradients in all BP processes.
+        # The value of the parameters equals the sum of the gradients in all BP processes.
         # And we found that using the converged parameters is more stable
-        sorted_cap, indices = torch.sort(torch.sum(reg_weights, dim = (0,2,3)),descending = True)
+        sorted_cap, indices = torch.sort(torch.sum(reg_weights, dim = (0,2,3)),descending = True) #GAP
 
         feature_weight = torch.zeros(len(indices))
         feature_weight[indices[sorted_cap > 0]] = 1
 
-        # we perform scale sensitive feature selection on the conv41 feaure, as it retains more spatial information
+        # we perform scale sensitive feature selection on the conv4-1 feature, as it retains more spatial information
         if i == 0:
             temp_feature_weight = taf_rank_model(feature, filter_size, device)
             feature_weight = feature_weight * temp_feature_weight
@@ -64,7 +69,7 @@ def taf_model(features, filter_sizes, device):
         feature_weight[indices[channel_num[i]:]] = 0
         nz_num = nz_num + torch.sum(feature_weight)
 
-        # In case，there　are two less features, we set a minmum feature number.
+        # In case，there　are not enough features, we set a minimum feature number.
         # If the total number is less than the minimum number, then select more from conv4_3
         if i == 1 and nz_num < nz_num_min:
             added_indices = indices[torch.sum(feature_weight).to(torch.long): (torch.sum(feature_weight)+ nz_num_min - nz_num).to(torch.long) ]

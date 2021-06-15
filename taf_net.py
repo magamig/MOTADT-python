@@ -10,7 +10,7 @@ torch.cuda.manual_seed_all(1234)
 
 class Regress_Net(nn.Module):
     """
-    this net exploits the ridge loss to calculate target active feature
+    this net exploits the ridge loss to calculate target active features
     """
     def __init__(self, filter_size):
         """
@@ -35,7 +35,7 @@ class Regress_Net(nn.Module):
 
 class Rank_Net(nn.Module):
     """
-    this net exploits the rank loss to calculate target activate feature
+    this net exploits the rank loss to calculate scale sensitive features
     """
     def __init__(self, filter_size):
         super(Rank_Net, self).__init__()
