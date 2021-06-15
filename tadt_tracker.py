@@ -95,7 +95,7 @@ class Tadt_Tracker(object):
 
 
         #-------------compute the indices of target-aware features----------------
-        self.feature_weights, self.balance_weights = taf_model(features, self.filter_sizes, self.device) 
+        self.feature_weights, self.balance_weights = taf_model(features, self.filter_sizes, self.device)
         #-------------select the target-awares features---------------------------
         self.exemplar_features = features_selection(patch_features, self.feature_weights, self.balance_weights, mode = 'reduction')
         #self.exemplar_features = fuse_feature(patch_features)

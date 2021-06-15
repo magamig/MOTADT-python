@@ -29,7 +29,7 @@ def load_sequence(root_path):
 if __name__ == "__main__":
     #assert(False), 'please download "imagenet-vgg-verydeep-16.mat" from "http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-16.mat" and set its path in defaults.py'
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    root_path = join(realpath(dirname(__file__)),'sequences/Test/')
+    root_path = join(realpath(dirname(__file__)),'sequences/Skiing/')
     img_list, gt_bboxes = load_sequence(root_path)
 
     #------------------demo------------------------------------------------------------------
