@@ -18,7 +18,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 def unnormalize(tensor):
     return ((tensor.cpu().squeeze(0).numpy()+np.array([0.485,0.456,0.406]))*np.array([0.229,0.224,0.225])).transpose((1,2,0)).clip(0,1)
 
-def get_subwindow_feature(model, image, location, input_sz, layer_name = None, visualize = True):
+def get_subwindow_feature(model, image, location, input_sz, layer_name = None):
     """
     function: extracts the features of the Conv4-3 and Conv4-1 layers of VGG16 that
               will be used to calculate target and scale sensitive features
@@ -30,31 +30,32 @@ def get_subwindow_feature(model, image, location, input_sz, layer_name = None, v
         layer_name -
     """
 
-    subwindow = get_subwindow(location, image, input_sz, visualize)
-    visualize = False
+    subwindow = get_subwindow(location, image, input_sz, False)
     
     subwindow = (torch.unsqueeze(subwindow, 0)).to(device)
     features = model(subwindow, layer_name)
-    if visualize:
-        show_heatmap_over_image(location, image, input_sz, features, subwindow)
 
     return features
 
-def get_frame_feature(model, image, layer_name = None):
+def get_frame_features(model, image, layer_name=None):
     """
-    function: extracts the deep features of the input images with the given model
+    function: extracts the deep features from the entire frame
     args:
-        model - deep network to extract features
-        img - image to be processed
+        model - model used to extract features
+        img - frame to be processed
         layer_name -
+    return:
+        frame - current frame processed as tensor
+        features - current frame features
     """
 
-    #image transforms for matconvnet vgg model
-    frame = torch.tensor(image.transpose(2,0,1), dtype=torch.float)- 128
+    frame = torch.tensor(image.transpose(2,0,1), dtype=torch.float) - 128
     
-    frame = (torch.unsqueeze(frame, 0)).to(device)
-    features = model(frame, layer_name)
-    show_heatmap_over_image(None, image, None, features, frame)
+    #squeeze frame to calculate features
+    frame_squeezed = (torch.unsqueeze(frame, 0)).to(device)
+    features = model(frame_squeezed, layer_name)
+
+    return frame, features
 
 def show_heatmap_over_image(location, image, input_sz, features, window):
     feature = torch.cat(features, dim = 1)
@@ -74,11 +75,14 @@ def show_heatmap_over_image(location, image, input_sz, features, window):
 
 def get_subwindow(location, image, input_sz, visualize = True):
     """
+    function: crop the subwindow from the image
     args:
         location - subwindow location [x1, y1, w, h]
         image - <class 'numpy.ndarray'>
         input_sz - the size of the input of vgg model, [width,height]
         visualize - whether to visualize the subwindow
+    return:
+        image: RGB image showing the portion(subwindow) cropped from image
     """
     size = np.array(location[2:4])
     position = np.array(location[0:2]) + size/2

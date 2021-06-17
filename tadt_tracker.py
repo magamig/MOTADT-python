@@ -15,7 +15,7 @@ from feature_utils_v2 import feature_selection  # for visualization
 from feature_utils_v2 import (features_selection, generate_patch_feature,
                               get_subwindow, get_subwindow_feature,
                               resize_tensor, round_python2,
-                              get_frame_feature)
+                              get_frame_features)
 from image_loader import default_image_loader
 from siamese import SiameseNet
 from taf import taf_model
@@ -54,9 +54,8 @@ class Tadt_Tracker(object):
 
         #------------sequence parameters initialization----------------------------
         img = default_image_loader(img_path)#<class 'numpy.ndarray'> [height, width, channel]
-        self.target_location = target_loc
+        self.target_location = target_loc[0]
         origin_target_size = math.sqrt(self.target_location[2] * self.target_location[3])
-        origin_target_location = self.target_location#<class 'list'>
         origin_image_size = img.shape[0: 2][::-1] # [width,height]
         if origin_target_size > self.config.MODEL.MAX_SIZE:
             self.rescale = self.config.MODEL.MAX_SIZE / origin_target_size
@@ -79,14 +78,10 @@ class Tadt_Tracker(object):
 
         #------------First frame processing--------------------
         self.srch_window_location = cal_srch_window_location(self.target_location, search_size)
-        features = get_subwindow_feature(self.model, image, self.srch_window_location, self.input_size, visualize = visualize) #two tensors, one from each Conv layer
-        
-        #------------------------for visualize feature-----------
-        #if do not want to visualize, comment these lines
-        visualize_feature = True
-        if visualize_feature:
-            self.features = features
-            self.subwindow = get_subwindow(self.srch_window_location, image, self.input_size,visualize = False)
+        self.srch_window_location2 = cal_srch_window_location(round_python2(np.array(target_loc[1]) * self.rescale)-np.array([1,1,0,0]), search_size)
+        features = get_subwindow_feature(self.model, image, self.srch_window_location, self.input_size) #two tensors, one from each Conv layer
+        features2 = get_subwindow_feature(self.model, image, self.srch_window_location2, self.input_size) #two tensors, one from each Conv layer
+
         #----------- crop the target exemplar from the feature map------------------
         patch_features, patch_locations = generate_patch_feature(target_size[::-1], self.srch_window_location, features)
         self.feature_pad = 2
@@ -95,7 +90,7 @@ class Tadt_Tracker(object):
 
 
         #-------------compute the indices of target-aware features----------------
-        self.feature_weights, self.balance_weights = taf_model(features, self.filter_sizes, self.device)
+        self.feature_weights, self.balance_weights = taf_model([features, features2], self.filter_sizes, self.device)
         #-------------select the target-awares features---------------------------
         self.exemplar_features = features_selection(patch_features, self.feature_weights, self.balance_weights, mode = 'reduction')
         #self.exemplar_features = fuse_feature(patch_features)
@@ -107,8 +102,36 @@ class Tadt_Tracker(object):
         #------------visualization------------------------------------------------
         if self.display:
             self.prepare_visualize()
-            self.visualization(img, origin_target_location, 0)
-        self.results.append(origin_target_location)
+            self.visualization(img, target_loc[0], 0)
+        self.results.append(target_loc[0])
+
+        #------------------------to visualize what is inside subwindow-----------
+        display_subwindow = False
+        if display_subwindow:
+            subwindow = get_subwindow(self.srch_window_location, image, self.input_size, visualize = display_subwindow)
+        
+        #------------------------to visualize heatmap on full frame or subwindow-----------
+        vis_heatmap_full_frame = False
+        vis_heatmap_subwindow = False
+
+        if vis_heatmap_full_frame or vis_heatmap_subwindow:
+
+            if vis_heatmap_full_frame:
+                subwindow, track_features = get_frame_features(self.model, img)
+            elif vis_heatmap_subwindow:
+                subwindow = get_subwindow(self.srch_window_location, image, self.input_size, visualize = False)
+                track_features = features
+            
+            srch_window_size = (subwindow.shape[2],subwindow.shape[1])
+
+            self.visualize_feature(
+                            features = track_features,
+                            stage = 'conv4_1',
+                            srch_window_size = srch_window_size,
+                            subwindow = subwindow,
+                            feature_weights = self.feature_weights,
+                            balance_weights = self.balance_weights 
+                            )
 
     def tracking(self, img_path, frame, visualize = False):
         #-------------read image and rescale the image-----------------------------
@@ -120,11 +143,10 @@ class Tadt_Tracker(object):
         )
         tic = cv2.getTickCount()
         #-------------get multi-scale feature--------------------------------------
-        features = get_subwindow_feature(self.model, image, self.srch_window_location, self.input_size, visualize = visualize)
+        features = get_subwindow_feature(self.model, image, self.srch_window_location, self.input_size)
         feature_size = (torch.tensor(features[0].shape)).numpy().astype(int)[-2:]
         
         #selected_features = fuse_feature(features)
-        #get_frame_feature(self.model, image) #heatmap over entire frame
 
         #-------------select the target-aware features new frame (not exemplar)---------------------------
         selected_features = features_selection(features, self.feature_weights, self.balance_weights, mode = 'reduction')
@@ -138,6 +160,7 @@ class Tadt_Tracker(object):
 
         #-------------get response map (final target aware bluish feature map result of correlation)-------------------------
         response_map = self.siamese_model(scaled_features, self.exemplar_features).to('cpu')
+
         scaled_response_map = torch.squeeze(resize_tensor(
                                                 response_map,
                                                 tuple(self.srch_window_location[-2:].astype(int)),
@@ -246,6 +269,7 @@ class Tadt_Tracker(object):
             plt.close()
         else:
             pass
+
     def visualize_feature(self, features = None, stage = 'conv4_1', srch_window_size = None, subwindow = None, feature_weights = None, balance_weights = None):
         """
         function: visualize the selected feature of the first frame
@@ -276,14 +300,11 @@ class Tadt_Tracker(object):
 
         heatmap = cv2.resize(heatmap, srch_window_size, interpolation=cv2.INTER_LINEAR)
         heatmap=cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
-        subwindow = subwindow.numpy().astype(np.uint8).transpose(1,2,0)
+        #subwindow = subwindow.numpy().astype(np.uint8).transpose(1,2,0)
+        subwindow = subwindow.cpu().numpy().astype(np.uint8).transpose(1,2,0)
         cv2.imshow('heatmap',heatmap)
-        cv2.waitKey(10)
+        cv2.waitKey(0)
         cv2.destroyAllWindows()
-
-
-
-
 
 
 def cal_feature_pad(features):
