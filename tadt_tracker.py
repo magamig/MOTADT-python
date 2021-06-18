@@ -111,7 +111,7 @@ class Tadt_Tracker(object):
             subwindow = get_subwindow(self.srch_window_location, image, self.input_size, visualize = display_subwindow)
         
         #------------------------to visualize heatmap on full frame or subwindow-----------
-        vis_heatmap_full_frame = False
+        vis_heatmap_full_frame = True
         vis_heatmap_subwindow = False
 
         if vis_heatmap_full_frame or vis_heatmap_subwindow:
@@ -301,8 +301,8 @@ class Tadt_Tracker(object):
         heatmap = cv2.resize(heatmap, srch_window_size, interpolation=cv2.INTER_LINEAR)
         heatmap=cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
         #subwindow = subwindow.numpy().astype(np.uint8).transpose(1,2,0)
-        subwindow = subwindow.cpu().numpy().astype(np.uint8).transpose(1,2,0)
-        cv2.imshow('heatmap',heatmap)
+        subwindow = subwindow.cpu().numpy().astype(np.uint8).transpose(1,2,0) + 128 #convert torch tensor back to open cv image
+        cv2.imshow('heatmap',cv2.addWeighted(cv2.cvtColor(subwindow,cv2.COLOR_BGR2RGB), 0.6, heatmap, 0.4, 0.0))
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
