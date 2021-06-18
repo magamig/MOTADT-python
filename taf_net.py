@@ -43,11 +43,33 @@ class Rank_Net(nn.Module):
         self.filter_height = int(2 * math.ceil(filter_size[2] / 2) + 1)
         self.filter_width = int(2 * math.ceil(filter_size[3] / 2) + 1)
         self.filter_size = (self.filter_height, self.filter_width)
+        #self.filter_size = (45, 45)
         self.conv = nn.Conv2d(
             in_channels = self.channels,
             out_channels = 1,
             kernel_size = self.filter_size,
             padding = 0
+            )
+        self.apply(init_weights)
+    def forward(self, feature):
+        return self.conv(feature)
+
+class Classification_Net(nn.Module):
+    """
+    this net exploits the cross entropy loss to calculate classification sensitive features
+    """
+    def __init__(self, filter_size):
+        super(Classification_Net, self).__init__()
+        self.channels = filter_size[1]
+        self.filter_height = int(2 * math.ceil(filter_size[2] / 2) + 1)
+        self.filter_width = int(2 * math.ceil(filter_size[3] / 2) + 1)
+        #self.filter_size = (self.filter_height, self.filter_width)
+        self.filter_size = (45, 45)
+        self.conv = nn.Conv2d(
+            in_channels = self.channels,
+            out_channels = 1,
+            kernel_size = self.filter_size,
+            padding = (int((self.filter_height - 1)/2), int((self.filter_width - 1)/2))
             )
         self.apply(init_weights)
     def forward(self, feature):
@@ -59,8 +81,6 @@ def init_weights(module):
         batch, channel, height, width = module.weight.data.shape
         module.weight.data = torch.randn(module.weight.data.shape)/(math.sqrt(channel*(height-1)/2*(width-1)/2)*1e8)
         nn.init.constant_(module.bias.data,0.0)
-
-
 
 
 if __name__ == '__main__':

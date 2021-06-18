@@ -15,21 +15,32 @@ torch.backends.cudnn.benchmark=True
 torch.manual_seed(1234)
 torch.cuda.manual_seed_all(1234)
 
-def taf_rank_model(feature, filter_size, device):
+def taf_rank_model(all_obj_features, filter_size, device):
+    '''
+    args:
+        filter_size - size of exemplar feature maps [batch, channel, height, width]
+        feature - the features of the Conv4-1 layer of VGG16 that
+                  will be used to calculate scale sensitive features
+    return: temp_feature_weight - tensor containing 0's and 1's at the positions of selected filters
+    '''
+    feature = all_obj_features[0]
     rank_net = Rank_Net(filter_size).to(device)
     rank_loss = RankLoss(device)
     filter_size = np.append(filter_size[0:2], np.array(rank_net.filter_size))
-    temp_feature_weight = rank_selection(feature, filter_size, rank_net, rank_loss, device)
+    temp_feature_weight = rank_selection(all_obj_features, filter_size, rank_net, rank_loss, device)
     return temp_feature_weight
 
-def rank_selection(feature, filter_size, model, loss, device):
+def rank_selection(all_obj_features, filter_size, model, loss, device):
     '''
     funtion: selects the scale sensitive features based on the ranking loss
     args:
         filter_size - [batch, channel, height, width]
     '''
+    feature = all_obj_features[0]
     feature.requires_grad_()
     scale_samples, pair_labels = generate_ranked_samples(feature, filter_size[-2:])
+    #scale_samples = torch.cat((all_obj_features[0], all_obj_features[1]))
+    #pair_labels = torch.tensor([[ 1,  0]])
     scale_samples = scale_samples.to(device)
     pair_labels = pair_labels.to(device)
     #----------------------------------------------------------------------------
@@ -41,7 +52,7 @@ def rank_selection(feature, filter_size, model, loss, device):
     #gradients = rank_eval(scale_samples, pair_labels, model, loss)
     rank_eval(scale_samples, pair_labels, model, loss)
     gradients = feature.grad
-    sorted_rank_cap, rank_indices = torch.sort(torch.sum(gradients, dim = (0,2,3)),descending = True)
+    sorted_rank_cap, rank_indices = torch.sort(torch.sum(gradients, dim = (0,2,3)),descending = True) #GAP
     feature.detach_()
     #----------------------------------------------------------------------------
     temp_weight = torch.zeros(len(rank_indices))
@@ -65,7 +76,7 @@ def rank_eval(scale_samples, pair_labels, model, loss):
     model.zero_grad()
     predicts.backward(pre_grads)
     #---------------------------------------------------------------------
-    return scale_samples.grad
+    #return scale_samples.grad
 
 def generate_ranked_samples(feature, filter_size):
     """
@@ -78,7 +89,7 @@ def generate_ranked_samples(feature, filter_size):
         samples -
         pair_labels -
     """
-    feature_size = torch.tensor(feature.shape).numpy()#[batch, channel, height, width
+    feature_size = torch.tensor(feature.shape).numpy()#[batch, channel, height, width]
     assert(np.prod((filter_size % 2).astype(int)) == 1), 'filter_size need to be an odd number.\n'
     # target_location in feature [y_c, x_c, height, width]
     target_location = np.append(np.round(feature_size[-2:]/2-1), filter_size)
