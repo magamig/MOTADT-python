@@ -15,12 +15,11 @@ def taf_clas_model(all_obj_features, filter_size, device):
     '''
     feature = torch.cat((all_obj_features[0], all_obj_features[1]))
     clas_net = Classification_Net(filter_size).to(device) #used for classification features
-    feature_size = torch.tensor(feature[0].shape).numpy()
 
     objective = nn.CrossEntropyLoss()
     optim = SGD(clas_net.parameters(),lr = 1e-9,momentum = 0.9,weight_decay = 1000)
 
-    labels = torch.tensor([1, 0]).to(device)
+    labels = torch.tensor([0, 1]).to(device)
 
     # first train the network with cross_entropy_loss
     train_clas(clas_net, optim, feature, objective, labels, device)
@@ -34,6 +33,7 @@ def taf_clas_model(all_obj_features, filter_size, device):
     clas_net_feature_weights[indices[sorted_cap > 0]] = 1
 
     return clas_net_feature_weights
+
 
 def train_clas(model, optim, input, objective, targets, device, epochs = 100):
     """
@@ -53,3 +53,51 @@ def train_clas(model, optim, input, objective, targets, device, epochs = 100):
             optim.zero_grad()
             loss.backward()
             optim.step()
+
+
+def taf_clas_model_grad(all_obj_features, filter_size, device):
+    '''
+    args:
+        filter_size - size of exemplar feature maps [batch, channel, height, width]
+        feature - either the features of the Conv4-3 or Conv4-1 layers of VGG16 that
+                  will be used to calculate target or scale sensitive features
+    return: indices - list of indices of the weights selected during regression
+            reg_feature_weights - tensor containing 0's and 1's at the positions determined by indices
+    '''
+    features = torch.cat((all_obj_features[0], all_obj_features[1]))
+    clas_net = Classification_Net(filter_size).to(device) #used for classification features
+
+    features.requires_grad_()
+
+    loss = nn.CrossEntropyLoss()
+
+    labels = torch.tensor([0, 1]).to(device)
+
+    clas_eval(features, labels, clas_net, loss)
+    
+    gradients = features.grad
+    sorted_cap, indices = torch.sort(torch.sum(gradients, dim = (0,2,3)),descending = True) #GAP
+
+    features.detach_()
+    #----------------------------------------------------------------------------
+    clas_net_feature_weights = torch.zeros(len(indices))
+    clas_net_feature_weights[indices[sorted_cap > 0]] = 1
+
+    return clas_net_feature_weights
+
+def clas_eval(features, labels, model, loss):
+    """
+    funtion: backward
+    args:
+        scale_samples - shape num_of_scales×１×height×width
+        labels - shape 32×２
+        model - clas_net
+        loss - clas_loss
+    """
+    predict = torch.squeeze(model(features))
+    predict = predict.reshape(predict.shape[0], predict.shape[1]*predict.shape[2])
+    loss_cce = loss(predict, labels)
+    #---------------------------------------------------------------------
+    pre_grads = loss_cce.backward()
+    model.zero_grad()
+    #predict.backward(pre_grads)

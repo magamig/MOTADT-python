@@ -63,13 +63,12 @@ class Classification_Net(nn.Module):
         self.channels = filter_size[1]
         self.filter_height = int(2 * math.ceil(filter_size[2] / 2) + 1)
         self.filter_width = int(2 * math.ceil(filter_size[3] / 2) + 1)
-        #self.filter_size = (self.filter_height, self.filter_width)
-        self.filter_size = (45, 45)
+        self.filter_size = (self.filter_height, self.filter_width)
         self.conv = nn.Conv2d(
             in_channels = self.channels,
             out_channels = 1,
-            kernel_size = self.filter_size,
-            padding = (int((self.filter_height - 1)/2), int((self.filter_width - 1)/2))
+            kernel_size = (3,3),
+            padding = 0
             )
         self.apply(init_weights)
     def forward(self, feature):

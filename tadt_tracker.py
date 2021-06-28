@@ -55,7 +55,7 @@ class Tadt_Tracker(object):
         #------------sequence parameters initialization----------------------------
         img = default_image_loader(img_path)#<class 'numpy.ndarray'> [height, width, channel]
         self.target_location = target_loc[0]
-        origin_target_size = math.sqrt(self.target_location[2] * self.target_location[3])
+        origin_target_size = math.sqrt(self.target_location[2] * self.target_location[3]) #area of bounding box
         origin_image_size = img.shape[0: 2][::-1] # [width,height]
         if origin_target_size > self.config.MODEL.MAX_SIZE:
             self.rescale = self.config.MODEL.MAX_SIZE / origin_target_size
@@ -73,14 +73,14 @@ class Tadt_Tracker(object):
         self.target_location = round_python2(np.array(self.target_location) * self.rescale)-np.array([1,1,0,0])#0-index
         target_size = self.target_location[2: 4]# [width, height]
         image_size = image.shape[0:2]# [height, width]
-        search_size, ratio = cal_window_size(self.config.MODEL.MAX_SIZE, image_size, self.config.MODEL.SCALE_NUM, self.config.MODEL.TOTAL_STRIDE)
+        search_size, ratio = cal_window_size(self.config.MODEL.MAX_SIZE, image_size, 2, self.config.MODEL.TOTAL_STRIDE)
         self.input_size = np.array([search_size, search_size])
 
         #------------First frame processing--------------------
         self.srch_window_location = cal_srch_window_location(self.target_location, search_size)
         self.srch_window_location2 = cal_srch_window_location(round_python2(np.array(target_loc[1]) * self.rescale)-np.array([1,1,0,0]), search_size)
-        features = get_subwindow_feature(self.model, image, self.srch_window_location, self.input_size) #two tensors, one from each Conv layer
-        features2 = get_subwindow_feature(self.model, image, self.srch_window_location2, self.input_size) #two tensors, one from each Conv layer
+        features = get_subwindow_feature(self.model, image, self.srch_window_location2, self.input_size) #two tensors, one from each Conv layer
+        features2 = get_subwindow_feature(self.model, image, self.srch_window_location, self.input_size) #two tensors, one from each Conv layer
 
         #----------- crop the target exemplar from the feature map------------------
         patch_features, patch_locations = generate_patch_feature(target_size[::-1], self.srch_window_location, features)

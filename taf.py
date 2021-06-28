@@ -7,7 +7,7 @@ import cv2
 
 from taf_rank import taf_rank_model
 from taf_reg import taf_reg_model
-from taf_classification import taf_clas_model
+from taf_classification import taf_clas_model, taf_clas_model_grad
 
 torch.backends.cudnn.benchmark=True
 
@@ -40,16 +40,16 @@ def taf_model(features, filter_sizes, device):
         feature_weight, indices = taf_reg_model(feature, filter_size, device)
 
         # we perform scale sensitive feature selection on the conv4-1 feature, as it retains more spatial information
+        #if i == 0:
+        #    temp_feature_weight = taf_rank_model(features_rank, filter_size, device)
+        #    feature_weight = feature_weight * temp_feature_weight
+
+        # we perform classification feature selection on the conv4-1 feature, as it retains more spatial information
         if i == 0:
             #feature_weight = torch.ones(512)
             #indices = torch.tensor(range(512))
-            temp_feature_weight = taf_clas_model(features_rank, filter_size, device)
+            temp_feature_weight = taf_clas_model_grad(features_rank, filter_size, device)
             feature_weight = feature_weight * temp_feature_weight
-
-        # we perform classification feature selection on the conv4-1 feature, as it retains more spatial information
-        #if i == 0:
-        #    temp_feature_weight = taf_clas_model(features_rank, filter_size, device)
-        #    feature_weight = feature_weight * temp_feature_weight
 
         feature_weight[indices[channel_num[i]:]] = 0
         nz_num = nz_num + torch.sum(feature_weight)
