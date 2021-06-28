@@ -63,8 +63,63 @@ def taf_model(features, filter_sizes, device):
         balance_weights.append(torch.max(torch.sum(torch.squeeze(feature)[indices[0:49],:,:],dim=0)))
 
     balance_weights = balance_weights[1] / torch.tensor(balance_weights, device = device)
+
     return feature_weights, balance_weights
 
+
+def taf_model_diff(features, shift_pos, device):
+    '''
+    args:
+        filter_sizes - size of exemplar feature maps [batch, channel, height, width]
+        features - features of the Conv4-3 and Conv4-1 layers of VGG16 from both objects
+    return: target aware features
+            feature weights - the position of the weights that we select as target aware features
+            balance weights - two values used to rescale the features due to scalar difference between conv4-1 and conv4-3
+    '''
+
+    balance_weights = []
+    feature_weights = []
+    channel_num = [80,300]
+
+    obj1_features = features[0]
+    obj2_features = features[1]
+
+    for i in range(len(obj1_features)):
+        
+        # retrieve obj1 and obj2 conv layer
+        obj1 = obj1_features[i]
+        obj2 = obj2_features[i]
+
+        # shift obj1 by shift_pos pixels width-wise
+        obj1_shifted = torch.roll(obj1, shifts=shift_pos, dims=3)
+
+        # element-wise multiplication
+        mult_features = obj1 * obj1_shifted
+        
+        # evaluate the sum over each chanel, in order to get a 1D vector, each dimension representing one chanel
+        vec1 = torch.sum(mult_features, dim = (0,2,3))
+
+        # apply the exact same process between the feature of obj1 and the ones of obj2 (without shifting)
+        vec2 = torch.sum(obj1*obj2, dim = (0,2,3))
+
+        # calculate V=vec1-vec2.
+        V = vec1-vec2
+
+        # select the top-N chanels associated with the maximum values
+        sorted_cap, indices = torch.sort(V, descending = True)
+
+        feature_weight = torch.zeros(len(indices))
+        feature_weight[indices[sorted_cap > 0]] = 1
+
+        feature_weight[indices[channel_num[i]:]] = 0
+
+        feature_weights.append(feature_weight)
+        balance_weights.append(torch.max(torch.sum(torch.squeeze(obj1)[indices[0:49],:,:],dim=0)))
+    
+    balance_weights = balance_weights[1] / torch.tensor(balance_weights, device = device)
+    
+    return feature_weights, balance_weights
+    
 if __name__ == '__main__':
     from feature_utils_v2 import resize_tensor
 

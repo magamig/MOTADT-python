@@ -18,7 +18,7 @@ from feature_utils_v2 import (features_selection, generate_patch_feature,
                               get_frame_features)
 from image_loader import default_image_loader
 from siamese import SiameseNet
-from taf import taf_model
+from taf import taf_model, taf_model_diff
 from tracking_utils import (cal_window_size, calculate_scale, fuse_feature,
                             generate_2d_window)
 
@@ -90,7 +90,9 @@ class Tadt_Tracker(object):
 
 
         #-------------compute the indices of target-aware features----------------
-        self.feature_weights, self.balance_weights = taf_model([features, features2], self.filter_sizes, self.device)
+        #self.feature_weights, self.balance_weights = taf_model([features, features2], self.filter_sizes, self.device)
+        self.feature_weights, self.balance_weights = taf_model_diff([features, features2], 1, self.device)
+
         #-------------select the target-awares features---------------------------
         self.exemplar_features = features_selection(patch_features, self.feature_weights, self.balance_weights, mode = 'reduction')
         #self.exemplar_features = fuse_feature(patch_features)
