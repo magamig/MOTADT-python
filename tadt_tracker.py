@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
+
+from torch.autograd import Variable
 from matplotlib.patches import Rectangle
 
 from backbone_v2 import VGG, build_vgg16
@@ -113,7 +115,7 @@ class Tadt_Tracker(object):
             subwindow = get_subwindow(self.srch_window_location, image, self.input_size, visualize = display_subwindow)
         
         #------------------------to visualize heatmap on full frame or subwindow-----------
-        vis_heatmap_full_frame = True
+        vis_heatmap_full_frame = False
         vis_heatmap_subwindow = False
 
         if vis_heatmap_full_frame or vis_heatmap_subwindow:
@@ -131,6 +133,20 @@ class Tadt_Tracker(object):
                             stage = 'conv4_1',
                             srch_window_size = srch_window_size,
                             subwindow = subwindow,
+                            feature_weights = self.feature_weights,
+                            balance_weights = self.balance_weights 
+                            )
+        
+        #------------------------to visualize convolution between feature maps and exemplar-----------
+        vis_conv_feature_map = True
+        
+        if vis_conv_feature_map:
+            subwindow, track_features = get_frame_features(self.model, img)
+            self.visualize_conv(
+                            features = track_features,
+                            stage = 'conv4_3',
+                            maps_num = 0,
+                            exemplar_features = patch_features,
                             feature_weights = self.feature_weights,
                             balance_weights = self.balance_weights 
                             )
@@ -307,7 +323,43 @@ class Tadt_Tracker(object):
         cv2.imshow('heatmap',cv2.addWeighted(cv2.cvtColor(subwindow,cv2.COLOR_BGR2RGB), 0.6, heatmap, 0.4, 0.0))
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-
+        
+    def visualize_conv(self, features = None, stage = 'conv4_1', maps_num = 0, exemplar_features = None, feature_weights = None, balance_weights = None):
+        """
+        function: visualize the selected feature of the first frame
+        """
+        assert(stage == 'conv4_1' or stage == 'conv4_3' or stage == 'all'), 'For now, TADT only support for conv4_1 and conv4_3'
+        if stage == 'conv4_1':
+            stage = 0
+        elif stage == 'conv4_3':
+            stage = 1
+        if feature_weights is None or balance_weights is None:
+            if stage == 'all':
+                feature = torch.cat(features, dim = 1)
+                exemplar = torch.cat(exemplar_features, dim = 1)
+            else:
+                feature = features[stage]
+                exemplar = exemplar_features[stage]
+        else:
+            if stage == 'all':
+                feature = features_selection(features, feature_weights, balance_weights, mode = 'reduction')
+                exemplar = features_selection(exemplar_features, feature_weights, balance_weights, mode = 'reduction')
+            else:
+                feature = features[stage]
+                feature_weight = feature_weights[stage]
+                feature = feature_selection(feature, feature_weight, mode = 'reduction')
+                
+                exemplar = exemplar_features[stage]
+                exemplar = feature_selection(exemplar, feature_weight, mode = 'reduction')
+        
+        convolution = nn.functional.conv2d(Variable(feature.view(feature.shape)),Variable(exemplar.view(exemplar.shape)))
+        convolution = torch.sum(convolution, dim = 1)
+        convolution = convolution.cpu().numpy().astype(np.uint8).transpose(1,2,0) #convert torch tensor back to open cv image
+        
+        cv2.imshow('convolution', convolution)
+        #cv2.imwrite('./convolution_conv4_3.jpg', convolution)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
 def cal_feature_pad(features):
     feature_size = (torch.tensor(features[0].shape)).numpy().astype(int)[-2:]
