@@ -70,6 +70,13 @@ class Tadt_Tracker(object):
                 tuple((np.ceil(np.array(origin_image_size) * self.rescale)).astype(int)),
                 interpolation=cv2.INTER_LINEAR
         )
+        
+        #----------------shift image---------------
+        shift = np.float32([
+	        [1, 0, 1],
+	        [0, 1, 1]
+        ])
+        shifted_img = cv2.warpAffine(image, shift, (image.shape[1], image.shape[0]))
 
         #------scaled target location, get position and size [x1,y1,width,height]------
         self.target_location = round_python2(np.array(self.target_location) * self.rescale)-np.array([1,1,0,0])#0-index
@@ -81,9 +88,12 @@ class Tadt_Tracker(object):
         #------------First frame processing--------------------
         self.srch_window_location = cal_srch_window_location(self.target_location, search_size)
         self.srch_window_location2 = cal_srch_window_location(round_python2(np.array(target_loc[1]) * self.rescale)-np.array([1,1,0,0]), search_size)
+        
         features = get_subwindow_feature(self.model, image, self.srch_window_location2, self.input_size) #two tensors, one from each Conv layer
         features2 = get_subwindow_feature(self.model, image, self.srch_window_location, self.input_size) #two tensors, one from each Conv layer
-
+        features3 = get_subwindow_feature(self.model, shifted_img, self.srch_window_location, self.input_size) #two tensors, one from each Conv layer
+        
+        
         #----------- crop the target exemplar from the feature map------------------
         patch_features, patch_locations = generate_patch_feature(target_size[::-1], self.srch_window_location, features)
         self.feature_pad = 2
@@ -93,7 +103,7 @@ class Tadt_Tracker(object):
 
         #-------------compute the indices of target-aware features----------------
         #self.feature_weights, self.balance_weights = taf_model([features, features2], self.filter_sizes, self.device)
-        self.feature_weights, self.balance_weights = taf_model_diff([features, features2], 1, self.device)
+        self.feature_weights, self.balance_weights = taf_model_diff([features, features2, features3], 1, self.device)
 
         #-------------select the target-awares features---------------------------
         self.exemplar_features = features_selection(patch_features, self.feature_weights, self.balance_weights, mode = 'reduction')
@@ -144,7 +154,7 @@ class Tadt_Tracker(object):
             subwindow, track_features = get_frame_features(self.model, img)
             self.visualize_conv(
                             features = track_features,
-                            stage = 'conv4_3',
+                            stage = 'conv4_1',
                             maps_num = 0,
                             exemplar_features = patch_features,
                             feature_weights = self.feature_weights,
@@ -357,7 +367,7 @@ class Tadt_Tracker(object):
         convolution = convolution.cpu().numpy().astype(np.uint8).transpose(1,2,0) #convert torch tensor back to open cv image
         
         cv2.imshow('convolution', convolution)
-        #cv2.imwrite('./convolution_conv4_3.jpg', convolution)
+        #cv2.imwrite('./convolution_conv4_1_80.jpg', convolution)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 

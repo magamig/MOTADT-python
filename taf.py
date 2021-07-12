@@ -83,6 +83,7 @@ def taf_model_diff(features, shift_pos, device):
 
     obj1_features = features[0]
     obj2_features = features[1]
+    obj1_shifted_features = features[2]
 
     for i in range(len(obj1_features)):
         
@@ -91,7 +92,8 @@ def taf_model_diff(features, shift_pos, device):
         obj2 = obj2_features[i]
 
         # shift obj1 by shift_pos pixels width-wise
-        obj1_shifted = torch.roll(obj1, shifts=shift_pos, dims=3)
+        #obj1_shifted = torch.roll(obj1, shifts=shift_pos, dims=3)
+        obj1_shifted = obj1_shifted_features[i]
 
         # element-wise multiplication
         mult_features = obj1 * obj1_shifted
