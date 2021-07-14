@@ -111,7 +111,10 @@ def taf_model_diff(features, shift_pos, device):
         sorted_cap, indices = torch.sort(V, descending = True)
 
         feature_weight = torch.zeros(len(indices))
-        feature_weight[indices[sorted_cap > 0]] = 1
+        #print('indices[sorted_cap > 0] ', indices[sorted_cap > 0][0])
+        #print('indices[0] ', indices[0])
+        #feature_weight[indices[sorted_cap > 0]] = 1
+        feature_weight[indices[sorted_cap > 0][0]] = 1
 
         feature_weight[indices[channel_num[i]:]] = 0
 

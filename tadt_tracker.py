@@ -154,7 +154,7 @@ class Tadt_Tracker(object):
             subwindow, track_features = get_frame_features(self.model, img)
             self.visualize_conv(
                             features = track_features,
-                            stage = 'conv4_1',
+                            stage = 'conv4_3',
                             maps_num = 0,
                             exemplar_features = patch_features,
                             feature_weights = self.feature_weights,
@@ -366,8 +366,13 @@ class Tadt_Tracker(object):
         convolution = torch.sum(convolution, dim = 1)
         convolution = convolution.cpu().numpy().astype(np.uint8).transpose(1,2,0) #convert torch tensor back to open cv image
         
-        cv2.imshow('convolution', convolution)
-        #cv2.imwrite('./convolution_conv4_1_80.jpg', convolution)
+        #feature_map = torch.sum(feature, dim = 1)
+        feature_map = feature[:,0,:,:]
+        feature_map = feature_map.cpu().numpy().astype(np.uint8).transpose(1,2,0) #convert torch tensor back to open cv image
+        
+        cv2.imshow('feature_map', feature_map)
+        #cv2.imshow('convolution', convolution)
+        cv2.imwrite('./feature_map_highest_value.jpg', feature_map)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
