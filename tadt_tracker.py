@@ -372,7 +372,11 @@ class Tadt_Tracker(object):
         
         cv2.imshow('feature_map', feature_map)
         #cv2.imshow('convolution', convolution)
-        cv2.imwrite('./feature_map_highest_value.jpg', feature_map)
+        
+        #for i in range(feature.shape[1]):
+        #    feature_map = feature[:,i,:,:]
+        #    feature_map = feature_map.cpu().numpy().astype(np.uint8).transpose(1,2,0) #convert torch tensor back to open cv image
+        #    cv2.imwrite('./feature_map/feature_map_' + str(i) + '.jpg', feature_map)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
