@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from torch.optim import SGD
 import cv2
+import matplotlib
 
 from taf_rank import taf_rank_model
 from taf_reg import taf_reg_model
@@ -83,7 +84,7 @@ def taf_model_diff(features, shift_pos, device):
 
     obj1_features = features[0]
     obj2_features = features[1]
-    obj1_shifted_features = features[2]
+    #obj1_shifted_features = features[2]
 
     for i in range(len(obj1_features)):
         
@@ -92,8 +93,8 @@ def taf_model_diff(features, shift_pos, device):
         obj2 = obj2_features[i]
 
         # shift obj1 by shift_pos pixels width-wise
-        #obj1_shifted = torch.roll(obj1, shifts=shift_pos, dims=3)
-        obj1_shifted = obj1_shifted_features[i]
+        obj1_shifted = torch.roll(obj1, shifts=shift_pos, dims=3)
+        #obj1_shifted = obj1_shifted_features[i]
 
         # element-wise multiplication
         mult_features = obj1 * obj1_shifted
@@ -103,18 +104,20 @@ def taf_model_diff(features, shift_pos, device):
 
         # apply the exact same process between the feature of obj1 and the ones of obj2 (without shifting)
         vec2 = torch.sum(obj1*obj2, dim = (0,2,3))
-
+            
         # calculate V=vec1-vec2.
         V = vec1-vec2
 
         # select the top-N chanels associated with the maximum values
         sorted_cap, indices = torch.sort(V, descending = True)
+        
+        #if i == 1:
+        #    matplotlib.pyplot.plot(V.cpu().numpy())
+        #    matplotlib.pyplot.show()
 
         feature_weight = torch.zeros(len(indices))
-        #print('indices[sorted_cap > 0] ', indices[sorted_cap > 0][0])
-        #print('indices[0] ', indices[0])
-        #feature_weight[indices[sorted_cap > 0]] = 1
-        feature_weight[indices[sorted_cap > 0][0]] = 1
+        feature_weight[indices[sorted_cap > 0]] = 1
+        #feature_weight[indices[sorted_cap > 0][0]] = 1
 
         feature_weight[indices[channel_num[i]:]] = 0
 

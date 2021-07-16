@@ -103,7 +103,7 @@ class Tadt_Tracker(object):
 
         #-------------compute the indices of target-aware features----------------
         #self.feature_weights, self.balance_weights = taf_model([features, features2], self.filter_sizes, self.device)
-        self.feature_weights, self.balance_weights = taf_model_diff([features, features2, features3], 1, self.device)
+        self.feature_weights, self.balance_weights = taf_model_diff([features, features2], 1, self.device)
 
         #-------------select the target-awares features---------------------------
         self.exemplar_features = features_selection(patch_features, self.feature_weights, self.balance_weights, mode = 'reduction')
@@ -366,17 +366,21 @@ class Tadt_Tracker(object):
         convolution = torch.sum(convolution, dim = 1)
         convolution = convolution.cpu().numpy().astype(np.uint8).transpose(1,2,0) #convert torch tensor back to open cv image
         
-        #feature_map = torch.sum(feature, dim = 1)
-        feature_map = feature[:,0,:,:]
+        feature_map = torch.sum(feature, dim = 1)
         feature_map = feature_map.cpu().numpy().astype(np.uint8).transpose(1,2,0) #convert torch tensor back to open cv image
         
-        cv2.imshow('feature_map', feature_map)
-        #cv2.imshow('convolution', convolution)
+        exemplar_map = torch.sum(exemplar, dim = 1)
+        exemplar_map = exemplar_map.cpu().numpy().astype(np.uint8).transpose(1,2,0) #convert torch tensor back to open cv image
         
-        #for i in range(feature.shape[1]):
-        #    feature_map = feature[:,i,:,:]
-        #    feature_map = feature_map.cpu().numpy().astype(np.uint8).transpose(1,2,0) #convert torch tensor back to open cv image
-        #    cv2.imwrite('./feature_map/feature_map_' + str(i) + '.jpg', feature_map)
+        #cv2.imshow('exemplar', exemplar_map)
+        #cv2.imshow('feature_map', feature_map)
+        #cv2.imshow('convolution', convolution)
+        #cv2.imwrite('./feature_map_conv4_3_layer_359.jpg', feature_map)
+        
+        #for i in range(exemplar.shape[1]):
+        #    exemplar_map = exemplar[:,i,:,:]
+        #    exemplar_map = exemplar_map.cpu().numpy().astype(np.uint8).transpose(1,2,0) #convert torch tensor back to open cv image
+        #    cv2.imwrite('./exemplar_feature_map/exemplar_feature_map_' + str(i) + '.jpg', exemplar_map)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
