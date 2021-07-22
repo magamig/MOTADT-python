@@ -367,20 +367,27 @@ class Tadt_Tracker(object):
         convolution = convolution.cpu().numpy().astype(np.uint8).transpose(1,2,0) #convert torch tensor back to open cv image
         
         feature_map = torch.sum(feature, dim = 1)
-        feature_map = feature_map.cpu().numpy().astype(np.uint8).transpose(1,2,0) #convert torch tensor back to open cv image
+        feature_map = feature_map.cpu().numpy().astype(np.uint8).transpose(1,2,0)
         
         exemplar_map = torch.sum(exemplar, dim = 1)
-        exemplar_map = exemplar_map.cpu().numpy().astype(np.uint8).transpose(1,2,0) #convert torch tensor back to open cv image
+        exemplar_map = exemplar_map.cpu().numpy().astype(np.uint8).transpose(1,2,0)
+        
+        #match_template = cv2.matchTemplate(
+        #                        feature[:,1,:,:].cpu().numpy().astype(np.uint8).transpose(1,2,0),
+        #                        exemplar[:,1,:,:].cpu().numpy().astype(np.uint8).transpose(1,2,0),
+        #                        3) #3 = cv.TM_CCORR_NORMED
         
         #cv2.imshow('exemplar', exemplar_map)
         #cv2.imshow('feature_map', feature_map)
-        #cv2.imshow('convolution', convolution)
+        #cv2.imshow('convolution', match_template)
         #cv2.imwrite('./feature_map_conv4_3_layer_359.jpg', feature_map)
         
         #for i in range(exemplar.shape[1]):
-        #    exemplar_map = exemplar[:,i,:,:]
-        #    exemplar_map = exemplar_map.cpu().numpy().astype(np.uint8).transpose(1,2,0) #convert torch tensor back to open cv image
-        #    cv2.imwrite('./exemplar_feature_map/exemplar_feature_map_' + str(i) + '.jpg', exemplar_map)
+        #    match_template = cv2.matchTemplate(
+        #                feature[:,i,:,:].cpu().numpy().astype(np.uint8).transpose(1,2,0),
+        #                exemplar[:,i,:,:].cpu().numpy().astype(np.uint8).transpose(1,2,0),
+        #                3) #3 = cv.TM_CCORR_NORMED
+        #    cv2.imwrite('./match_templates/match_template_' + str(i) + '.jpg', match_template)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
